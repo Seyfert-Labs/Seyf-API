@@ -1,0 +1,152 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SEYF API",
+    "description": "Backend de producto para los clientes web y móvil de SEYF. Contrato generado desde los schemas Zod — no editar a mano.",
+    "version": "0.1.0"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Liveness check",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/vaults": {
+      "get": {
+        "summary": "Lista las bóvedas disponibles con APY y estado",
+        "tags": [
+          "vaults"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "vaults": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "asset": {
+                            "type": "string",
+                            "enum": [
+                              "CETES",
+                              "USDC",
+                              "XLM"
+                            ]
+                          },
+                          "apy": {
+                            "type": "number",
+                            "description": "APY vigente, fracción decimal (0.105 = 10.5%)"
+                          },
+                          "tvl": {
+                            "type": "string",
+                            "description": "TVL en unidades del asset, string decimal"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "paused"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "asset",
+                          "apy",
+                          "tvl",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "vaults"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "vaults",
+      "description": "Bóvedas de rendimiento (DeFindex)"
+    }
+  ]
+}
