@@ -31,6 +31,10 @@ const EnvSchema = z.object({
     .describe("Invertir en la estrategia dentro del mismo depósito"),
   DEFINDEX_SLIPPAGE_BPS: z.coerce.number().int().min(0).max(10_000).default(100),
 
+  BITSO_BASE_URL: z.string().default("https://stage.bitso.com"),
+  FX_PRICE_TTL_MS: z.coerce.number().int().positive().default(30_000),
+  FX_PRICE_STALE_MAX_MS: z.coerce.number().int().positive().default(600_000),
+
   ETHERFUSE_API_KEY: z.string().optional(),
   ETHERFUSE_BASE_URL: z.string().default("https://devnet.blockchain.etherfuse.com"),
   ETHERFUSE_WEBHOOK_SECRET: z.string().optional(),

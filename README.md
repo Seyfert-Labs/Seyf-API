@@ -40,6 +40,7 @@ src/
 └── modules/            # monolito modular — un directorio por dominio
     ├── auth/           # sesión: canje de identidad Privy → JWT propios, refresh con rotación, guard de /v1
     ├── users/          # perfil (/v1/me) y vinculación did:privy ↔ wallet Stellar (tabla profiles)
+    ├── fx/             # precios en MXN agregados en el servidor, con caché y TTL
     ├── identity/       # KYC Etherfuse: estado, envío de identidad y documentos, webhook firmado
     │   ├── etherfuse.ts# puerto HTTP hacia el proveedor (timeout + reintentos)
     │   ├── webhook.ts  # verificación HMAC/JCS y extracción de eventos

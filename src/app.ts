@@ -29,6 +29,9 @@ import {
   type ProfilesRepository,
 } from "./modules/users/repo.js";
 import { usersRoutes } from "./modules/users/routes.js";
+import { HttpBitsoClient, type BitsoClient } from "./modules/fx/bitso.js";
+import { fxRoutes } from "./modules/fx/routes.js";
+import { FxService } from "./modules/fx/service.js";
 import {
   HttpEtherfuseClient,
   UnconfiguredEtherfuseClient,
@@ -65,6 +68,7 @@ export interface AppDeps {
   kycGate?: KycGate;
   etherfuseClient?: EtherfuseClient;
   identityRepo?: IdentityRepository;
+  bitsoClient?: BitsoClient;
 }
 
 function defaultIdentityVerifier(config: Config): IdentityVerifier {
@@ -118,6 +122,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
         { name: "auth", description: "Sesión y tokens de la SEYF API" },
         { name: "users", description: "Perfil y vinculación de wallet" },
         { name: "identity", description: "Verificación de identidad (KYC)" },
+        { name: "fx", description: "Precios en MXN" },
         { name: "vaults", description: "Bóvedas de rendimiento (DeFindex)" },
       ],
       components: {
@@ -160,6 +165,12 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
       "Supabase sin configurar: usando repositorios en memoria (los datos se pierden al reiniciar).",
     );
   }
+
+  const fxService = new FxService(
+    deps.bitsoClient ?? new HttpBitsoClient(config.BITSO_BASE_URL),
+    { ttlMs: config.FX_PRICE_TTL_MS, staleMaxMs: config.FX_PRICE_STALE_MAX_MS },
+    app.log,
+  );
 
   const catalog = buildCatalog(config);
   const defindexClient = deps.defindexClient ?? new SdkDefindexClient(config);
@@ -207,6 +218,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
       await v1.register(usersRoutes({ profiles: profilesRepo }));
       await v1.register(identityRoutes({ identity: identityService, profiles: profilesRepo }));
       await v1.register(identityWebhookRoutes({ identity: identityService }));
+      await v1.register(fxRoutes({ fx: fxService }));
       await v1.register(
         vaultsRoutes({
           vaults: vaultsService,

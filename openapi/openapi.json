@@ -1329,6 +1329,143 @@
         }
       }
     },
+    "/v1/fx/prices": {
+      "get": {
+        "summary": "Precio en MXN de los activos soportados",
+        "tags": [
+          "fx"
+        ],
+        "description": "Agregado en el servidor con caché: el cliente no consulta proveedores de precios.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "assets",
+            "required": false,
+            "description": "Lista separada por comas. Sin valor devuelve todos los soportados: MXN, MXNB, XLM, USDC, USDT, USD, DAI, EUR, BRL"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "prices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "mxn": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Precio de una unidad del activo en MXN, decimal exacto. null si status es 'unavailable'"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "stale",
+                              "unavailable"
+                            ],
+                            "description": "'ok': precio vigente. 'stale': el proveedor falló y este es el último conocido — muéstralo con su antigüedad (asOf). 'unavailable': sin precio"
+                          },
+                          "source": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "fixed",
+                                  "bitso"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "asOf": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Momento en que se obtuvo el precio"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "mxn",
+                          "status",
+                          "source",
+                          "asOf"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "prices"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/vaults": {
       "get": {
         "summary": "Lista las bóvedas disponibles con su APY",
@@ -2848,6 +2985,10 @@
     {
       "name": "identity",
       "description": "Verificación de identidad (KYC)"
+    },
+    {
+      "name": "fx",
+      "description": "Precios en MXN"
     },
     {
       "name": "vaults",

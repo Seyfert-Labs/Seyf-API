@@ -64,8 +64,19 @@ Se conserva de la web (buena lógica): la canonicalización JCS de la firma, la 
 `kyc/agreements` (aceptación de términos) no se portó: en SEYF-P está entrelazado con la creación de cuenta bancaria del onramp (`bankAccountId`), que pertenece al módulo `banking` fuera de alcance (Q9). La sesión de onboarding, que en la web es una cookie keyed por publicKey, en la API se liga al usuario autenticado y persiste en `onboarding_sessions`.
 Libs: `lib/etherfuse/*` (24 archivos — el módulo tercero más grande), `lib/seyf/kyc-*`, `lib/seyf/etherfuse-*`. Nota: `lib/etherfuse/__tests__/` ya tiene tests portables como referencia de comportamiento.
 
-### `fx` (tarea #8) ← `/api/bitso/*` (3), `/api/convert`, `/api/prices/*` (2), `/api/sdex/*` (3)
-Rates y conversión Bitso, precios MXN (cache server-side), y swap SDEX (`quote/build/send` — mismo patrón XDR que vaults). Libs: `lib/bitso/*`, `lib/sdex/*`, `lib/stellar/path-payment.ts`.
+### `fx` — precios ✅ · conversión pendiente ← `/api/bitso/*` (3), `/api/convert`, `/api/prices/*` (2), `/api/sdex/*` (3)
+
+**Portado**: `GET /v1/fx/prices` agrega los precios en MXN en el servidor. Mejora sobre la web:
+
+| # | Hallazgo | Evidencia | Corrección |
+|---|---|---|---|
+| H11 | **Los precios se consultan sin caché en cada render de cada cliente** (`Cache-Control: no-store`), multiplicando la carga contra Bitso por número de usuarios — camino directo al rate limit a escala | `app/api/prices/mxn/route.ts`, `app/api/bitso/rates/route.ts` | Caché con TTL (30 s por defecto) + colapso de consultas concurrentes: una sola llamada al proveedor por activo y ventana, sirva a quien sirva |
+| H12 | Si el proveedor falla, el activo **se omite del mapa** de precios y la UI no muestra nada | `prices/mxn` (`if (p != null) prices[code] = p`) | `status: "stale"` con `asOf`: se sirve el último precio conocido dentro de una ventana (10 min por defecto) para que el cliente lo muestre con su antigüedad; pasada la ventana, `unavailable` |
+| H13 | `Number(t.last)` convierte a coma flotante el precio que Bitso ya entrega como string exacto | `prices/mxn`, `bitso/rates` | Los precios viajan como string decimal de extremo a extremo |
+
+Nota: los tickers de Bitso son endpoints **públicos**, así que el módulo de precios no necesita credenciales; las llaves firmadas solo hacen falta para órdenes y saldos (conversión).
+
+**Pendiente** — `POST /api/convert` y `/api/sdex/*` no se portaron: el flujo de conversión coloca órdenes con la cuenta Bitso del negocio y emite MXNB desde su float vía Juno hacia una dirección **EVM** (`0x…`), no Stellar. Es el riel de banking, fuera de alcance hasta decidir Q9. El precio de **CETES** tampoco está disponible aquí: en la web se deriva de un quote de offramp de Etherfuse que exige el contexto de ramp del usuario (también banking).
 
 ### `transactions` (tarea #9) ← `/api/db/conversions`, `/api/juno/transactions` + estado on-chain
 Modelo de estados unificado: `building → signing → submitted → confirmed | failed`.
