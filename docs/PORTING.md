@@ -78,8 +78,19 @@ Nota: los tickers de Bitso son endpoints **públicos**, así que el módulo de p
 
 **Pendiente** — `POST /api/convert` y `/api/sdex/*` no se portaron: el flujo de conversión coloca órdenes con la cuenta Bitso del negocio y emite MXNB desde su float vía Juno hacia una dirección **EVM** (`0x…`), no Stellar. Es el riel de banking, fuera de alcance hasta decidir Q9. El precio de **CETES** tampoco está disponible aquí: en la web se deriva de un quote de offramp de Etherfuse que exige el contexto de ramp del usuario (también banking).
 
-### `transactions` (tarea #9) ← `/api/db/conversions`, `/api/juno/transactions` + estado on-chain
-Modelo de estados unificado: `building → signing → submitted → confirmed | failed`.
+### `transactions` ✅ ← hooks `useStellarTxns` / `usePendingTxns` + `vault_operations`
+
+Portado a `GET /v1/transactions` y `GET /v1/transactions/pending`.
+
+| # | Hallazgo | Evidencia | Corrección |
+|---|---|---|---|
+| H14 | **El navegador consulta Horizon directamente**, así que el cliente conoce la red, los tipos de operación de Stellar y su formato — justo lo que la decisión D1 prohíbe en móvil | `hooks/useStellarTxns.ts` (`fetch(HORIZON_BASE()...)`) | La API traduce las operaciones de Horizon a un modelo de producto (`kind`, `direction`, `asset`, `amount`); el cliente no sabe que Stellar existe |
+| H15 | **Los movimientos pendientes viven en `localStorage`** y se reconcilian *adivinando*: se considera que un pendiente ya ocurrió si aparece on-chain una operación con la misma dirección y un monto que difiere en menos de 0.01, dentro de una ventana de 3 minutos; si no, expira a los 10 minutos. Dos movimientos parecidos se confunden entre sí, y borrar los datos del navegador pierde el registro | `hooks/usePendingTxns.ts` (`Math.abs(t.value - p.amount) < 0.01`) | Un movimiento en curso es un hecho del servidor con identificador propio (`vault_operations`): `/transactions/pending` lo reporta con su estado real y la deduplicación contra la red es por **hash de transacción**, no por heurística de monto |
+| H16 | `Number(op.amount)` sobre montos que Horizon entrega como string exacto | `useStellarTxns.classifyOp` | Los montos viajan como string de extremo a extremo (test con `0.0000001`) |
+
+Se conserva de la web: la clasificación de operaciones (`payment`, `path_payment`, `change_trust`, `create_account`) y la lógica de dirección in/out/self.
+
+**Pendiente**: el historial no incluye aún conversiones FX ni movimientos SPEI (`/api/db/conversions`, `/api/juno/transactions`), porque esos módulos no están portados (banking, Q9). Cuando lo estén, se suman como una tercera fuente al mismo merge.
 
 ### `banking` (fuera del objetivo actual — pendiente Q9) ← `/api/juno/*` (13), `/api/db/{banks,clabe}`, `/api/seyf/etherfuse/{bank-account,deposit-info,onramp/*,order/*,quote/*,ramp-context,readiness}` (9)
 El onramp SPEI (Juno + Etherfuse) está mucho más desarrollado de lo que el README sugería: CLABEs, registro de bancos, quotes/órdenes de onramp, welcome bonus, redeem/withdrawal. Es un módulo grande por sí mismo. **Decisión pendiente**: ¿entra en el MVP de la API o después? (afecta Q9).

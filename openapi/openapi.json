@@ -1466,6 +1466,357 @@
         }
       }
     },
+    "/v1/transactions": {
+      "get": {
+        "summary": "Historial de movimientos del usuario",
+        "tags": [
+          "transactions"
+        ],
+        "description": "Une las operaciones iniciadas en SEYF con lo observado on-chain, sin duplicar: si una operación de bóveda ya está confirmada en la red, se reporta una sola vez.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            },
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "description": "Devuelve movimientos anteriores a este instante ISO (paginación)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transactions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "vault",
+                              "onchain"
+                            ],
+                            "description": "'vault': operación iniciada en SEYF. 'onchain': movimiento observado en la red"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "description": "deposit | withdrawal | payment | path_payment | trustline | account_created"
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "in",
+                              "out",
+                              "self"
+                            ]
+                          },
+                          "asset": {
+                            "type": "string"
+                          },
+                          "amount": {
+                            "type": "string",
+                            "description": "Monto decimal exacto"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "confirmed",
+                              "failed"
+                            ]
+                          },
+                          "txHash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "vaultId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "failureReason": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "source",
+                          "kind",
+                          "direction",
+                          "asset",
+                          "amount",
+                          "status",
+                          "txHash",
+                          "vaultId",
+                          "failureReason",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextBefore": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Valor para el parámetro `before` de la siguiente página. null si no hay más"
+                    },
+                    "onchainAvailable": {
+                      "type": "boolean",
+                      "description": "false si la red no pudo consultarse: la lista trae solo movimientos de SEYF"
+                    }
+                  },
+                  "required": [
+                    "transactions",
+                    "nextBefore",
+                    "onchainAvailable"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/transactions/pending": {
+      "get": {
+        "summary": "Movimientos en curso",
+        "tags": [
+          "transactions"
+        ],
+        "description": "Operaciones que aún esperan firma o confirmación de la red. A diferencia de un registro optimista en el cliente, cada una tiene identificador y estado consultable.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transactions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "vault",
+                              "onchain"
+                            ],
+                            "description": "'vault': operación iniciada en SEYF. 'onchain': movimiento observado en la red"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "description": "deposit | withdrawal | payment | path_payment | trustline | account_created"
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "in",
+                              "out",
+                              "self"
+                            ]
+                          },
+                          "asset": {
+                            "type": "string"
+                          },
+                          "amount": {
+                            "type": "string",
+                            "description": "Monto decimal exacto"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "confirmed",
+                              "failed"
+                            ]
+                          },
+                          "txHash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "vaultId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "failureReason": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "source",
+                          "kind",
+                          "direction",
+                          "asset",
+                          "amount",
+                          "status",
+                          "txHash",
+                          "vaultId",
+                          "failureReason",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "transactions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/vaults": {
       "get": {
         "summary": "Lista las bóvedas disponibles con su APY",
@@ -2989,6 +3340,10 @@
     {
       "name": "fx",
       "description": "Precios en MXN"
+    },
+    {
+      "name": "transactions",
+      "description": "Historial y movimientos en curso"
     },
     {
       "name": "vaults",

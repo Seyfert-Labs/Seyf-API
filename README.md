@@ -41,6 +41,7 @@ src/
     ├── auth/           # sesión: canje de identidad Privy → JWT propios, refresh con rotación, guard de /v1
     ├── users/          # perfil (/v1/me) y vinculación did:privy ↔ wallet Stellar (tabla profiles)
     ├── fx/             # precios en MXN agregados en el servidor, con caché y TTL
+    ├── transactions/   # historial unificado (ledger propio + Horizon) y movimientos en curso
     ├── identity/       # KYC Etherfuse: estado, envío de identidad y documentos, webhook firmado
     │   ├── etherfuse.ts# puerto HTTP hacia el proveedor (timeout + reintentos)
     │   ├── webhook.ts  # verificación HMAC/JCS y extracción de eventos
