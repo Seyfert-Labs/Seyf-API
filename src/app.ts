@@ -10,7 +10,7 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { z } from "zod";
-import type { Config } from "./core/config.js";
+import { horizonUrl, type Config } from "./core/config.js";
 import { createSupabaseClient } from "./core/db.js";
 import { registerErrorHandling } from "./core/errors.js";
 import { idempotencyPlugin, MemoryIdempotencyStore } from "./core/idempotency.js";
@@ -29,6 +29,9 @@ import {
   type ProfilesRepository,
 } from "./modules/users/repo.js";
 import { usersRoutes } from "./modules/users/routes.js";
+import { HttpHorizonClient, type HorizonClient } from "./modules/transactions/horizon.js";
+import { transactionsRoutes } from "./modules/transactions/routes.js";
+import { TransactionsService } from "./modules/transactions/service.js";
 import { HttpBitsoClient, type BitsoClient } from "./modules/fx/bitso.js";
 import { fxRoutes } from "./modules/fx/routes.js";
 import { FxService } from "./modules/fx/service.js";
@@ -69,6 +72,7 @@ export interface AppDeps {
   etherfuseClient?: EtherfuseClient;
   identityRepo?: IdentityRepository;
   bitsoClient?: BitsoClient;
+  horizonClient?: HorizonClient;
 }
 
 function defaultIdentityVerifier(config: Config): IdentityVerifier {
@@ -123,6 +127,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
         { name: "users", description: "Perfil y vinculación de wallet" },
         { name: "identity", description: "Verificación de identidad (KYC)" },
         { name: "fx", description: "Precios en MXN" },
+        { name: "transactions", description: "Historial y movimientos en curso" },
         { name: "vaults", description: "Bóvedas de rendimiento (DeFindex)" },
       ],
       components: {
@@ -198,6 +203,11 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
   const kycGate =
     deps.kycGate ??
     (supabase ? new IdentityKycGate(identityService) : new PermissiveKycGate(app.log));
+  const transactionsService = new TransactionsService(
+    operationsRepo,
+    deps.horizonClient ?? new HttpHorizonClient(horizonUrl(config)),
+    app.log,
+  );
   const mutationsService = new VaultMutationsService(
     catalog,
     defindexClient,
@@ -219,6 +229,9 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
       await v1.register(identityRoutes({ identity: identityService, profiles: profilesRepo }));
       await v1.register(identityWebhookRoutes({ identity: identityService }));
       await v1.register(fxRoutes({ fx: fxService }));
+      await v1.register(
+        transactionsRoutes({ transactions: transactionsService, profiles: profilesRepo }),
+      );
       await v1.register(
         vaultsRoutes({
           vaults: vaultsService,

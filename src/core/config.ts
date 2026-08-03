@@ -31,6 +31,8 @@ const EnvSchema = z.object({
     .describe("Invertir en la estrategia dentro del mismo depósito"),
   DEFINDEX_SLIPPAGE_BPS: z.coerce.number().int().min(0).max(10_000).default(100),
 
+  HORIZON_URL: z.string().optional().describe("Sin valor se deriva de STELLAR_NETWORK"),
+
   BITSO_BASE_URL: z.string().default("https://stage.bitso.com"),
   FX_PRICE_TTL_MS: z.coerce.number().int().positive().default(30_000),
   FX_PRICE_STALE_MAX_MS: z.coerce.number().int().positive().default(600_000),
@@ -58,4 +60,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     }
   }
   return parsed.data;
+}
+
+export function horizonUrl(config: Config): string {
+  if (config.HORIZON_URL) return config.HORIZON_URL;
+  return config.STELLAR_NETWORK === "mainnet"
+    ? "https://horizon.stellar.org"
+    : "https://horizon-testnet.stellar.org";
 }

@@ -49,9 +49,18 @@ export interface OperationResult {
   failureReason: string | null;
 }
 
+export interface ListOptions {
+  limit: number;
+  /** Solo operaciones creadas antes de este instante ISO (paginación). */
+  before?: string;
+}
+
 export interface OperationsRepository {
   create(op: NewVaultOperation): Promise<VaultOperation>;
   findById(id: string): Promise<VaultOperation | null>;
+  listByUser(userId: string, options: ListOptions): Promise<VaultOperation[]>;
+  /** Operaciones que aún no se resuelven (esperando firma o enviadas). */
+  listPendingByUser(userId: string): Promise<VaultOperation[]>;
   /**
    * Marca la operación como enviada solo si sigue esperando firma.
    * Devuelve false si otra ejecución ya la tomó (evita doble envío).
@@ -87,6 +96,24 @@ export class MemoryOperationsRepository implements OperationsRepository {
 
   async findById(id: string): Promise<VaultOperation | null> {
     return this.rows.get(id) ?? null;
+  }
+
+  async listByUser(userId: string, options: ListOptions): Promise<VaultOperation[]> {
+    return [...this.rows.values()]
+      .filter((row) => row.userId === userId)
+      .filter((row) => !options.before || row.createdAt < options.before)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, options.limit);
+  }
+
+  async listPendingByUser(userId: string): Promise<VaultOperation[]> {
+    return [...this.rows.values()]
+      .filter(
+        (row) =>
+          row.userId === userId &&
+          (row.status === "awaiting_signature" || row.status === "submitted"),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   async claimForSubmit(id: string): Promise<boolean> {
@@ -192,6 +219,31 @@ export class SupabaseOperationsRepository implements OperationsRepository {
       .maybeSingle();
     if (error) throw dbError("vault_operations.findById", error);
     return data ? toDomain(data as OperationRow) : null;
+  }
+
+  async listByUser(userId: string, options: ListOptions): Promise<VaultOperation[]> {
+    let query = this.db
+      .from("vault_operations")
+      .select()
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(options.limit);
+    if (options.before) query = query.lt("created_at", options.before);
+
+    const { data, error } = await query;
+    if (error) throw dbError("vault_operations.listByUser", error);
+    return (data ?? []).map((row) => toDomain(row as OperationRow));
+  }
+
+  async listPendingByUser(userId: string): Promise<VaultOperation[]> {
+    const { data, error } = await this.db
+      .from("vault_operations")
+      .select()
+      .eq("user_id", userId)
+      .in("status", ["awaiting_signature", "submitted"])
+      .order("created_at", { ascending: false });
+    if (error) throw dbError("vault_operations.listPendingByUser", error);
+    return (data ?? []).map((row) => toDomain(row as OperationRow));
   }
 
   async claimForSubmit(id: string): Promise<boolean> {
