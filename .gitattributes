@@ -1,0 +1,8 @@
+# Normaliza saltos de línea a LF en todo el repo.
+# Sin esto, un checkout en Windows (core.autocrlf) convierte el contrato a
+# CRLF mientras el generador lo escribe con LF: el drift check de CI fallaría
+# con diferencias fantasma en cada línea.
+* text=auto eol=lf
+
+# El lockfile lo gestiona npm: evita ruido de merge línea a línea.
+package-lock.json -diff linguist-generated

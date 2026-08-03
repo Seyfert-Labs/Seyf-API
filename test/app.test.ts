@@ -26,11 +26,11 @@ describe("SEYF API", () => {
     expect(doc.paths).toHaveProperty("/v1/vaults");
   });
 
-  it("GET /v1/vaults responde 501 con el shape de error estándar", async () => {
+  it("GET /v1/vaults exige autenticación (guard por defecto en /v1)", async () => {
     const res = await app.inject({ method: "GET", url: "/v1/vaults" });
-    expect(res.statusCode).toBe(501);
+    expect(res.statusCode).toBe(401);
     expect(res.json()).toMatchObject({
-      error: { code: "not_implemented" },
+      error: { code: "unauthorized" },
     });
   });
 });

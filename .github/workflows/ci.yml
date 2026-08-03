@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      # El contrato es la fuente de verdad para los clientes (web y móvil):
+      # el artefacto commiteado debe coincidir exactamente con el generado
+      # desde los schemas Zod de las rutas.
+      - name: Contrato OpenAPI sin drift
+        run: |
+          npm run openapi
+          if ! git diff --exit-code openapi/openapi.json; then
+            echo "::error file=openapi/openapi.json::El contrato commiteado no coincide con el generado desde los schemas Zod. Corre 'npm run openapi' y commitea el resultado."
+            exit 1
+          fi

@@ -330,7 +330,7 @@ Reglas: `features/* → core/*` solamente; features no se importan entre sí (na
 | D3 | Un backend compartido web+móvil; sin gateway comercial; sin microservicios | Propuesta firme |
 | D4 | **React Native + Expo, TypeScript** (TanStack Query, expo-router, cliente OpenAPI generado) | **Decidida** (Q1: equipo web TS + iOS <12 meses) |
 | D5 | Offline-readable, never offline-writable; idempotency keys | Propuesta firme |
-| D6 | Firma proxy vía SEYF API; biometría local obligatoria antes de firmar | Condicionada a Q4 |
+| D6 | Firma proxy vía SEYF API; biometría local obligatoria antes de firmar | **Revisada (2026-08-02)**: el proxy NO se implementó. La evidencia del código (hallazgo H8 en PORTING.md) muestra que Pollar firma en el cliente y valida el origen. La API construye el XDR y recibe el firmado; el proxy queda supeditado a resolver Q4 con Pollar. La biometría local antes de firmar sigue siendo obligatoria en el cliente móvil |
 | D7 | Server-driven vaults + feature flags + forced update desde el día 1 | Propuesta firme |
 
 ---
@@ -346,7 +346,7 @@ Reglas: `features/* → core/*` solamente; features no se importan entre sí (na
 
 **Q3. ¿El SDK React Native/Expo de Privy cubre el flujo actual (email/OTP) tal como lo usa SEYF-P?** — Privy publica `@privy-io/expo`, lo que hace esta pregunta mucho más tratable que con Kotlin nativo, pero hay que validar en el spike de Fase 0 que soporta el flujo exacto de la web y su modelo de sesión. Plan B: auth custom vía SEYF API con Privy server-side.
 
-**Q4. ¿Cómo funciona Pollar desde móvil?** — ¿La sesión OTP/passkey puede originarse en Android (Credential Manager / FIDO2)? ¿Pollar exige interacción directa del dispositivo o todo pasa por API? Determina D6 y parte del threat model.
+**Q4. ¿Cómo funciona Pollar desde móvil?** — *Más urgente tras el hallazgo H8*: hoy la firma ocurre en el navegador con `@pollar/core` y validación de origen. Preguntas concretas para Pollar: (a) ¿hay SDK para React Native/Expo? (b) ¿`/tx/sign` acepta llamadas server-side y con qué credenciales, para poder evaluar D6? (c) ¿la sesión OTP/passkey puede originarse en Android (Credential Manager / FIDO2)? Bloquea el flujo de firma de la app móvil; el resto del depósito ya funciona sin resolverla.
 
 **Q5. ¿La WebApp accede a Supabase directamente desde el navegador (anon key + RLS)?** — Para móvil propongo prohibirlo (todo vía API), pero hay que confirmar qué hace la web hoy para no romper paridad conceptual de datos.
 
