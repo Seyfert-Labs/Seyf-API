@@ -24,7 +24,9 @@ npm run dev        # http://localhost:3001 — Swagger UI en /docs
 | Script | Qué hace |
 |---|---|
 | `npm run dev` | Servidor en watch mode |
-| `npm test` | Tests (Vitest) |
+| `npm test` | Tests de unidad e integración (Vitest, sin red) |
+| `npm run test:e2e` | Suite end-to-end: servidor real contra proveedores reales |
+| `npm run test:smoke` | Verificación contra una instancia desplegada (`SEYF_API_BASE_URL`) |
 | `npm run typecheck` | TypeScript sin emitir |
 | `npm run lint` | ESLint |
 | `npm run openapi` | Regenera `openapi/openapi.json` |
@@ -65,9 +67,28 @@ src/
 3. `POST /v1/operations/{id}/confirm` con `{ signedXdr }` → envía a la red → `confirmed` | `failed`.
 4. Si el paso 3 responde `502 submit_uncertain`, **no reintentar**: consultar `GET /v1/operations/{id}`. La operación pudo haber llegado a la red.
 
+## Pruebas
+
+Dos niveles, con propósitos distintos:
+
+- **`npm test`** — unidad e integración. Usa `app.inject()` y dobles de los proveedores; no toca la red. Es lo que corre en cada PR y debe ser rápido.
+- **`npm run test:e2e`** — end-to-end. Levanta el servidor en un puerto real, le habla por HTTP y usa los clientes de producción **sin dobles internos**. Lo único sustituido es el emisor de tokens de Privy: se genera un par ES256 propio y se configura como llave de verificación, de modo que el verificador real de la API se ejecuta sobre tokens auténticos en forma y firma.
+
+La suite E2E usa proveedores públicos reales (Horizon testnet, Friendbot, tickers de Bitso), así que **corre sin credenciales**. Las pruebas que sí las necesitan se omiten solas e informan por qué:
+
+| Variable | Qué activa |
+|---|---|
+| `DEFINDEX_API_KEY` | Depósito completo en testnet: construir → firmar → enviar → confirmar |
+| `SEYF_WEB_BASE_URL` | Guardián anti-divergencia: compara direcciones de bóveda con SEYF-P |
+| `SUPABASE_*` | Persistencia real en lugar de repositorios en memoria |
+
 ## Migraciones
 
 El SQL de `migrations/` se aplica al proyecto Supabase antes de desplegar. Son tablas **nuevas** propiedad de la API: no modifican el schema que usa la WebApp.
+
+## Despliegue
+
+El [Dockerfile](Dockerfile) produce la imagen de producción y cada push a `main` la publica en GHCR. El runbook completo — variables obligatorias, comparación de plataformas y verificación post-despliegue — está en [docs/DEPLOY.md](docs/DEPLOY.md).
 
 **Montos**: los saldos viajan como *string* decimal (`balance`) más unidades enteras (`balanceRaw`), nunca como `number`. La coma flotante introduce errores de redondeo en dinero; ver `src/core/units.ts`.
 

@@ -1,0 +1,23 @@
+# Configuración de despliegue en Railway.
+# Ver docs/DEPLOY.md para el runbook completo y las variables obligatorias.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Railway no promueve la revisión hasta que este endpoint responde 200, así que
+# una configuración inválida (falta AUTH_JWT_SECRET, Supabase…) impide el
+# despliegue en lugar de dejar una instancia rota atendiendo tráfico.
+healthcheckPath = "/healthz"
+healthcheckTimeout = 30
+
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# UNA sola réplica, a propósito: el store de idempotencia, los refresh tokens y
+# la caché de precios viven hoy en memoria del proceso. Con dos réplicas, dos
+# peticiones con la misma Idempotency-Key podrían caer en instancias distintas
+# y ejecutarse dos veces — justo lo que esa protección evita.
+# Antes de subir este número hay que respaldarlos en Postgres.
+numReplicas = 1
