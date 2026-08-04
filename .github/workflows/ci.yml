@@ -45,3 +45,30 @@ jobs:
             echo "::error file=openapi/openapi.json::El contrato commiteado no coincide con el generado desde los schemas Zod. Corre 'npm run openapi' y commitea el resultado."
             exit 1
           fi
+
+  # Suite end-to-end: servidor real contra proveedores externos reales.
+  # Horizon testnet, Friendbot y los tickers de Bitso son públicos, así que
+  # corre sin secretos; las pruebas que necesitan credenciales se omiten solas
+  # e informan por qué. Configura los secretos para activarlas.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests end-to-end
+        run: npm run test:e2e
+        env:
+          DEFINDEX_API_KEY: ${{ secrets.DEFINDEX_API_KEY }}
+          ETHERFUSE_API_KEY: ${{ secrets.ETHERFUSE_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SEYF_WEB_BASE_URL: ${{ secrets.SEYF_WEB_BASE_URL }}
+          STELLAR_NETWORK: testnet
